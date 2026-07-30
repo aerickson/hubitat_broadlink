@@ -714,6 +714,34 @@ def sendSavedCode(name, reps = 1)
     sendCodeData(getSavedCode(name), reps) 
 }
 
+// Callback used by Generic Component Button Controller children. The child
+// carries the exact saved-code name in its data values; the button number is
+// intentionally ignored because each child represents one code.
+def componentPush(child, button)
+{
+    if(!child)
+    {
+        log.warn "saved-code child push received without a child device"
+        return
+    }
+
+    def codeName = child.getDataValue("codeName")
+    if(!codeName)
+    {
+        log.warn "saved-code child ${child.deviceNetworkId} has no codeName"
+        return
+    }
+
+    if(!getSavedCode(codeName))
+    {
+        log.warn "saved-code child ${child.deviceNetworkId} refers to missing code: ${codeName}"
+        return
+    }
+
+    logDebug("saved-code child push: ${codeName}")
+    sendSavedCode(codeName)
+}
+
 def saveLearnedCode(name)
 {
     def entry = addSavedCode(name, device.currentValue("learnedCode"))
