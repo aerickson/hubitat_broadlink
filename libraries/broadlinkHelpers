@@ -55,6 +55,7 @@ def deleteSavedCode(name)
     
     if(res)
     {
+        updateSavedCodesAttribute()
         log.info "removed code: ${name}"
         return true        
     }
@@ -76,6 +77,8 @@ def addSavedCode(name, code)
     {
         state.codes << codeEntry
     }
+
+    updateSavedCodesAttribute()
     
     return codeEntry
 }
@@ -114,6 +117,17 @@ def clearSavedCodes()
     synchronized(codesSync)
     {
         state.codes = [:]
+    }
+
+    updateSavedCodesAttribute()
+}
+
+def updateSavedCodesAttribute()
+{
+    if(this.respondsTo("sendEvent"))
+    {
+        def names = allKnownCodesKeys()
+        sendEvent(name: "savedCodes", value: names ? names.join(", ") : "(none)")
     }
 }
 

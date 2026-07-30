@@ -57,6 +57,11 @@ def mainPage()
             href(page: "codeManagementPage", title: "<b>Manage saved codes and import new codes into this app.</b>")
         }
         
+        section("<b>Codes saved in this app</b>")
+        {
+            paragraph(formatSavedCodesForDisplay())
+        }
+
         section("<b>Configuration options:</b>")
         {
             input name: "enableLogging", type: "bool", title: "Enable debug logging?", defaultValue: false, required: true
@@ -291,6 +296,11 @@ def codeManagementPage()
         }
         
         displayStatus(status)
+        section("<b>Saved codes in this app</b>")
+        {
+            paragraph(formatSavedCodesForDisplay())
+        }
+
         
         section("<b>Delete saved codes</b>")
         {
@@ -399,4 +409,22 @@ def logDebug(msg)
     {
         log.debug "${msg}"
     }
+}
+def formatSavedCodesForDisplay()
+{
+    def names = allKnownCodesKeys()
+    if(!names)
+    {
+        return "No saved codes."
+    }
+
+    return "<ul>" + names.collect { "<li>${escapeHtml(it.toString())}</li>" }.join("") + "</ul>"
+}
+
+def escapeHtml(value)
+{
+    return value.replace("&", "&amp;")
+               .replace("<", "&lt;")
+               .replace(">", "&gt;")
+               .replace("\"", "&quot;")
 }

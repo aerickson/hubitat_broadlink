@@ -67,6 +67,7 @@ metadata
         
         attribute "learnedCode", "string"
         attribute "savedCode", "string"
+        attribute "savedCodes", "string"
         
         attribute "activity", "string"
         
@@ -121,6 +122,7 @@ def initialize()
     // clear these code values, in case the long strings cause browser problems
     device.deleteCurrentState("learnedCode")
     device.deleteCurrentState("savedCode")
+    updateSavedCodesAttribute()
     
     scan()
 }
