@@ -124,6 +124,16 @@ def initialize()
     device.deleteCurrentState("learnedCode")
     device.deleteCurrentState("savedCode")
     updateSavedCodesAttribute()
+
+    try
+    {
+        // Recover children after driver updates or missed mutation callbacks.
+        reconcileSavedCodeChildren()
+    }
+    catch(Exception e)
+    {
+        log.error "saved-code child reconciliation failed during initialization: ${e.message}"
+    }
     
     scan()
 }
