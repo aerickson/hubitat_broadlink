@@ -125,17 +125,20 @@ Hubitat dashboard tiles still represent individual controls, so one tile per des
 - Child-device creation must be idempotent so repeated initialization does not create duplicates.
 - A device with no saved codes should simply have no code children.
 
-## Open implementation choices
+## Design decisions
 
-1. Confirm the exact built-in Hubitat child driver name for a component button. If no suitable generic driver is available, provide a small local child driver implementing Button.
-2. Decide whether child IDs are based on a sanitized code name or a stable hash of the code name.
-3. Decide whether renaming updates the existing child device or recreates it.
-4. Decide whether a child should expose only `pushed`, or also support optional held/double-tapped behavior in the future.
-5. Decide whether the app should display child-device status or only the parent’s saved-code list.
+1. Use Hubitat’s built-in `hubitat / Generic Component Button Controller` child driver. The similarly named `Generic Component Button` driver is intended to receive events from a parent and does not provide the user-facing push command needed here. The Button Controller driver delegates button pushes to the parent through `componentPush(child, button)`.
+2. Child network IDs use the parent network ID, a fixed saved-code marker, and a stable digest of the exact saved-code name. Do not use a sanitized name as the identity: punctuation, Unicode, case, and collisions make it unsafe. The display label remains the original saved-code name.
+3. Store the exact saved-code name in child data (for example, `codeName`) in addition to encoding it in the network ID. Reconciliation must verify both the managed ID prefix and this data before using a child.
+4. Renaming recreates the child. The name-derived identity necessarily changes, and child network IDs should be treated as immutable. The replacement retains the saved-code association through the new `codeName` value and label. This is a documented consequence for dashboard tiles and automations that reference the old child.
+5. Each child exposes one button. The parent ignores the button number passed to `componentPush` and sends the child’s associated code once through `sendSavedCode`; held, released, and double-tapped behavior are out of scope.
+6. The System Manager app needs no child-specific UI or synchronization changes. It continues to manage the parent’s saved-code map; parent reconciliation owns the child devices.
+
+The decisions follow Hubitat’s [Parent/Child Drivers documentation](https://docs2.hubitat.com/en/developer/driver/parent-child-drivers) and official [Generic Component Parent Demo](https://github.com/hubitat/HubitatPublic/blob/master/examples/drivers/genericComponentParentDemo.groovy). The distinction between the built-in Button and Button Controller behavior is also documented in the [Hubitat community discussion](https://community.hubitat.com/t/generic-component-central-scene-switch-and-generic-component-button-how-to-use/43600).
 
 ## Suggested implementation order
 
-1. Add a child button driver or confirm the built-in component button driver.
+1. Add parent support for the built-in Generic Component Button Controller.
 2. Add parent child-device reconciliation helpers.
 3. Integrate reconciliation with add, import, rename, delete, clear, and initialize paths.
 4. Add parent delegation from child button pushes.
@@ -155,4 +158,3 @@ The Logitech Harmony parent driver is another useful reference for dynamic child
 <https://github.com/ogiewon/Hubitat/blob/master/Drivers/logitech-harmony-hub-parent.src/README.md>
 
 Its README documents creating child devices for Harmony activities, synchronizing children from the parent, and using Hubitat’s built-in Generic Component drivers. The newer Harmony implementation uses Generic Component Switch for activities, partly for HomeKit compatibility. We should reuse the parent/child lifecycle approach while retaining Button semantics for Broadlink saved codes.
-
