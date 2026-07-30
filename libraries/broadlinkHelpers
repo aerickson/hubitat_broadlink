@@ -45,6 +45,16 @@ import hubitat.helper.HexUtils
 
 @Field String codesSync = ""
 
+def reconcileSavedCodeChildrenIfSupported()
+{
+    // The System Manager app includes this library too, but only the parent
+    // driver owns child devices. Keep the library reusable in both contexts.
+    if(this.respondsTo("reconcileSavedCodeChildren"))
+    {
+        reconcileSavedCodeChildren()
+    }
+}
+
 def deleteSavedCode(name)
 {
     def res
@@ -56,6 +66,7 @@ def deleteSavedCode(name)
     if(res)
     {
         updateSavedCodesAttribute()
+        reconcileSavedCodeChildrenIfSupported()
         log.info "removed code: ${name}"
         return true        
     }
@@ -79,6 +90,7 @@ def addSavedCode(name, code)
     }
 
     updateSavedCodesAttribute()
+    reconcileSavedCodeChildrenIfSupported()
     
     return codeEntry
 }
@@ -120,6 +132,7 @@ def clearSavedCodes()
     }
 
     updateSavedCodesAttribute()
+    reconcileSavedCodeChildrenIfSupported()
 }
 
 def updateSavedCodesAttribute()
