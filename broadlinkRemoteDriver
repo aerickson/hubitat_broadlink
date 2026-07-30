@@ -94,6 +94,7 @@ import groovy.transform.Field
     
 @Field INIT_KEY = "097628343fe99e23765c1513accf8b02"
 @Field INIT_VECT = "562e17996d093d28ddb3ba695a2e6f58"
+@Field SAVED_CODE_CHILD_MARKER = "-saved-code-"
 
 @Field cmdAuthReq = 0x65
 @Field cmdControl = 0x6A
@@ -712,6 +713,80 @@ def generateIR(offBurst, onBurst, leadIn, bitmap, leadOut)
 def sendSavedCode(name, reps = 1)
 {
     sendCodeData(getSavedCode(name), reps) 
+}
+
+def savedCodeChildNetworkId(codeName)
+{
+    if(null == codeName) { return null }
+
+    def digest = java.security.MessageDigest.getInstance("SHA-256")
+    def hash = digest.digest(codeName.toString().getBytes("UTF-8")).encodeHex().toString()
+    return "${device.deviceNetworkId}${SAVED_CODE_CHILD_MARKER}${hash}"
+}
+
+def configureSavedCodeChild(child, codeName)
+{
+    if(!child || null == codeName) { return }
+
+    codeName = codeName.toString()
+    child.updateDataValue("codeName", codeName)
+    child.setLabel(codeName)
+    child.parse([[name: "numberOfButtons", value: 1,
+                  descriptionText: "${child.displayName} has one saved-code button"]])
+}
+
+def reconcileSavedCodeChildren()
+{
+    def codes = allKnownCodesMap() ?: [:]
+    def childPrefix = "${device.deviceNetworkId}${SAVED_CODE_CHILD_MARKER}"
+    def existing = [:]
+
+    getChildDevices()?.each
+    { child ->
+        def childDni = child.deviceNetworkId?.toString()
+        if(!childDni?.startsWith(childPrefix)) { return }
+
+        def codeName = child.getDataValue("codeName")
+        def valid = codeName && codes.containsKey(codeName) &&
+                    savedCodeChildNetworkId(codeName) == childDni
+
+        if(!valid || existing.containsKey(codeName))
+        {
+            log.info "removing stale saved-code child: ${childDni}"
+            deleteChildDevice(childDni)
+        }
+        else
+        {
+            configureSavedCodeChild(child, codeName)
+            existing[codeName] = child
+        }
+    }
+
+    codes.each
+    { codeName, code ->
+        if(!existing.containsKey(codeName))
+        {
+            def childDni = savedCodeChildNetworkId(codeName)
+            try
+            {
+                def child = addChildDevice("hubitat", "Generic Component Button Controller",
+                                           childDni,
+                                           [name: codeName.toString(),
+                                            label: codeName.toString(),
+                                            isComponent: true,
+                                            data: [codeName: codeName.toString()]])
+                configureSavedCodeChild(child, codeName)
+                existing[codeName] = child
+                log.info "created saved-code child: ${codeName}"
+            }
+            catch(Exception e)
+            {
+                log.error "unable to create saved-code child ${codeName}: ${e.message}"
+            }
+        }
+    }
+
+    return existing
 }
 
 // Callback used by Generic Component Button Controller children. The child
